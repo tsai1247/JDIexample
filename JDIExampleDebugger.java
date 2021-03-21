@@ -1,3 +1,5 @@
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.Map;
 
 import com.sun.jdi.VirtualMachine;
@@ -14,6 +16,7 @@ import com.sun.jdi.Location;
 import com.sun.jdi.connect.Connector;
 import com.sun.jdi.connect.LaunchingConnector;
 
+import com.sun.jdi.request.StepRequest;
 import com.sun.jdi.request.BreakpointRequest;
 import com.sun.jdi.request.ClassPrepareRequest;
 
@@ -22,7 +25,7 @@ import com.sun.jdi.event.LocatableEvent;
 import com.sun.jdi.event.EventSet;
 import com.sun.jdi.event.Event;
 import com.sun.jdi.event.BreakpointEvent;
-
+import com.sun.jdi.event.StepEvent;
 
 public class JDIExampleDebugger {
     private Class debugClass; 
@@ -42,7 +45,7 @@ public class JDIExampleDebugger {
  
         JDIExampleDebugger debuggerInstance = new JDIExampleDebugger();
         debuggerInstance.setDebugClass(JDIExampleDebuggee.class);
-        int[] breakPointLines = {6, 9};
+        int[] breakPointLines = {4, 6};
         debuggerInstance.setBreakPointLines(breakPointLines);
         VirtualMachine vm = null;
         try {
@@ -55,8 +58,11 @@ public class JDIExampleDebugger {
                         debuggerInstance.setBreakPoints(vm, (ClassPrepareEvent)event);
                     }
                     if (event instanceof BreakpointEvent) {
-                        debuggerInstance.displayVariables((BreakpointEvent) event);
+                        debuggerInstance.enableStepRequest(vm, (BreakpointEvent)event);
                     }
+                    if (event instanceof StepEvent) {
+                        debuggerInstance.displayVariables((StepEvent) event);
+                    } 
                     vm.resume();
                 }
             }
@@ -64,6 +70,23 @@ public class JDIExampleDebugger {
             System.out.println("Virtual Machine is disconnected.");
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            InputStreamReader reader = new InputStreamReader(vm.process().getInputStream());
+            OutputStreamWriter writer = new OutputStreamWriter(System.out);
+            char[] buf = new char[512];
+            reader.read(buf);
+            writer.write(buf);
+            writer.flush();
+        }
+    }
+
+    public void enableStepRequest(VirtualMachine vm, BreakpointEvent event) {
+        // enable step request for last break point
+        if (event.location().toString().
+            contains(debugClass.getName() + ":" + breakPointLines[breakPointLines.length-1])) {
+            StepRequest stepRequest = vm.eventRequestManager()
+                .createStepRequest(event.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
+            stepRequest.enable();    
         }
     }
 
