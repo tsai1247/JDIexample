@@ -121,15 +121,12 @@ public class JDIExampleDebugger {
         ClassType classType = (ClassType) event.referenceType();
         for( Location location : classType.allLineLocations())
         {
-            if(classType.locationsOfLine(location.lineNumber()).get(0).method().toString().equals("JDIExampleDebuggee.main(java.lang.String[])") )
+            if(classType.locationsOfLine(location.lineNumber()).get(0).method().toString().contains("main(java.lang.String[])") )
             {
                 newBreakPointLines.add(location.lineNumber());
                 break;
             }
         }
-        // newBreakPointLines.add(classType.allLineLocations().get(0).lineNumber());
-        // newBreakPointLines.add(6);
-        // newBreakPointLines.add(9);
         
         for(int lineNumber: newBreakPointLines) {
             Location location = classType.locationsOfLine(lineNumber).get(0);
@@ -142,8 +139,7 @@ public class JDIExampleDebugger {
     public void displayVariables(LocatableEvent event) throws IncompatibleThreadStateException, AbsentInformationException {
         StackFrame stackFrame = event.thread().frame(0);
         if(stackFrame.location().toString().contains(debugClass.getName())) {
-            Map<LocalVariable, Value> visibleVariables = stackFrame
-            .getValues(stackFrame.visibleVariables());
+            Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
             System.out.println("Variables at " + stackFrame.location().toString() +  " > ");
             for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
                 System.out.println(entry.getKey().name() + " = " + entry.getValue() );

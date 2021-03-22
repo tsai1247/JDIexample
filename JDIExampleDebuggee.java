@@ -6,5 +6,14 @@ public class JDIExampleDebuggee {
         String jdi = "Java Debug Interface"; // add a break point here and also stepping in here
         String text = "Today, we'll dive into " + jdi;
         System.out.println(text);
+
+
+        int i=0;
+        int ans = 0;
+        for(i=1; i<5; i++)
+        {
+            ans += i;
+        }
+        System.out.println(ans);
     }
 }
