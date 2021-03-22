@@ -1,6 +1,9 @@
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Map;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.Bootstrap;
@@ -28,7 +31,8 @@ import com.sun.jdi.event.BreakpointEvent;
 import com.sun.jdi.event.StepEvent;
 
 public class JDIExampleDebugger {
-    private Class debugClass; 
+    private static Logger logger = Logger.getLogger("LoggingDemo");
+    private Class debugClass;
     private int[] breakPointLines;
 
     
@@ -42,7 +46,6 @@ public class JDIExampleDebugger {
     }
 
     public static void main(String[] args) throws Exception {
- 
         JDIExampleDebugger debuggerInstance = new JDIExampleDebugger();
         debuggerInstance.setDebugClass(JDIExampleDebuggee.class);
         int[] breakPointLines = {4, 6};
@@ -53,6 +56,7 @@ public class JDIExampleDebugger {
             debuggerInstance.enableClassPrepareRequest(vm);
             EventSet eventSet = null;
             while ((eventSet = vm.eventQueue().remove()) != null) {
+                System.out.println((eventSet.toArray()[0].toString()).split("@")[0].toString() + "\n");
                 for (Event event : eventSet) {
                     if (event instanceof ClassPrepareEvent) {
                         debuggerInstance.setBreakPoints(vm, (ClassPrepareEvent)event);
@@ -67,10 +71,11 @@ public class JDIExampleDebugger {
                 }
             }
         } catch (VMDisconnectedException e) {
-            System.out.println("Virtual Machine is disconnected.");
+            logger.config("Virtual Machine is disconnected.");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
+            System.out.println("--------running-------");
             InputStreamReader reader = new InputStreamReader(vm.process().getInputStream());
             OutputStreamWriter writer = new OutputStreamWriter(System.out);
             char[] buf = new char[512];
@@ -120,8 +125,9 @@ public class JDIExampleDebugger {
           .getValues(stackFrame.visibleVariables());
         System.out.println("Variables at " + stackFrame.location().toString() +  " > ");
         for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
-            System.out.println(entry.getKey().name() + " = " + entry.getValue());
+            System.out.println(entry.getKey().name() + " = " + entry.getValue() );
         }
+        System.out.println();
     }
 }
 }
