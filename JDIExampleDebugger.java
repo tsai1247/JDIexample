@@ -1,9 +1,16 @@
+import java.awt.event.KeyListener;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.swing.JFrame;
+import javax.swing.JRootPane;
+import java.awt.event.KeyEvent;
 
 import com.sun.jdi.VirtualMachine;
 import com.sun.jdi.Bootstrap;
@@ -34,7 +41,7 @@ public class JDIExampleDebugger {
     private static Logger logger = Logger.getLogger("LoggingDemo");
     private Class debugClass;
     private int[] breakPointLines;
-
+    private Vector<Integer> newBreakPointLines = new Vector<Integer>();
     
     public VirtualMachine connectAndLaunchVM() throws Exception {
  
@@ -48,7 +55,7 @@ public class JDIExampleDebugger {
     public static void main(String[] args) throws Exception {
         JDIExampleDebugger debuggerInstance = new JDIExampleDebugger();
         debuggerInstance.setDebugClass(JDIExampleDebuggee.class);
-        int[] breakPointLines = {4, 6};
+        int[] breakPointLines = {1, 2};
         debuggerInstance.setBreakPointLines(breakPointLines);
         VirtualMachine vm = null;
         try {
@@ -56,7 +63,6 @@ public class JDIExampleDebugger {
             debuggerInstance.enableClassPrepareRequest(vm);
             EventSet eventSet = null;
             while ((eventSet = vm.eventQueue().remove()) != null) {
-                System.out.println((eventSet.toArray()[0].toString()).split("@")[0].toString() + "\n");
                 for (Event event : eventSet) {
                     if (event instanceof ClassPrepareEvent) {
                         debuggerInstance.setBreakPoints(vm, (ClassPrepareEvent)event);
@@ -66,7 +72,7 @@ public class JDIExampleDebugger {
                     }
                     if (event instanceof StepEvent) {
                         debuggerInstance.displayVariables((StepEvent) event);
-                    } 
+                    }
                     vm.resume();
                 }
             }
@@ -88,7 +94,7 @@ public class JDIExampleDebugger {
     public void enableStepRequest(VirtualMachine vm, BreakpointEvent event) {
         // enable step request for last break point
         if (event.location().toString().
-            contains(debugClass.getName() + ":" + breakPointLines[breakPointLines.length-1])) {
+            contains(debugClass.getName() + ":" + newBreakPointLines.get(newBreakPointLines.size()-1) )) {
             StepRequest stepRequest = vm.eventRequestManager()
                 .createStepRequest(event.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
             stepRequest.enable();    
@@ -109,27 +115,71 @@ public class JDIExampleDebugger {
         classPrepareRequest.addClassFilter(debugClass.getName());
         classPrepareRequest.enable();
     }
+
+    // TODO: setBreakPoints
     public void setBreakPoints(VirtualMachine vm, ClassPrepareEvent event) throws AbsentInformationException {
         ClassType classType = (ClassType) event.referenceType();
-        for(int lineNumber: breakPointLines) {
+        for( Location location : classType.allLineLocations())
+        {
+            if(classType.locationsOfLine(location.lineNumber()).get(0).method().toString().equals("JDIExampleDebuggee.main(java.lang.String[])") )
+            {
+                newBreakPointLines.add(location.lineNumber());
+                break;
+            }
+        }
+        // newBreakPointLines.add(classType.allLineLocations().get(0).lineNumber());
+        // newBreakPointLines.add(6);
+        // newBreakPointLines.add(9);
+        
+        for(int lineNumber: newBreakPointLines) {
             Location location = classType.locationsOfLine(lineNumber).get(0);
             BreakpointRequest bpReq = vm.eventRequestManager().createBreakpointRequest(location);
             bpReq.enable();
         }
     }
 
+    // TODO: here is what each step should do
     public void displayVariables(LocatableEvent event) throws IncompatibleThreadStateException, AbsentInformationException {
-    StackFrame stackFrame = event.thread().frame(0);
-    if(stackFrame.location().toString().contains(debugClass.getName())) {
-        Map<LocalVariable, Value> visibleVariables = stackFrame
-          .getValues(stackFrame.visibleVariables());
-        System.out.println("Variables at " + stackFrame.location().toString() +  " > ");
-        for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
-            System.out.println(entry.getKey().name() + " = " + entry.getValue() );
+        StackFrame stackFrame = event.thread().frame(0);
+        if(stackFrame.location().toString().contains(debugClass.getName())) {
+            Map<LocalVariable, Value> visibleVariables = stackFrame
+            .getValues(stackFrame.visibleVariables());
+            System.out.println("Variables at " + stackFrame.location().toString() +  " > ");
+            for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
+                System.out.println(entry.getKey().name() + " = " + entry.getValue() );
+            }
+            System.out.println();
+            getCh();
         }
-        System.out.println();
     }
-}
+    public static void getCh() {
+        final JFrame frame = new JFrame();
+        synchronized (frame) {  
+            frame.setUndecorated(true);  
+            frame.getRootPane().setWindowDecorationStyle(JRootPane.FRAME);  
+            frame.addKeyListener(new KeyListener() {
+                @Override 
+                public void keyPressed(KeyEvent e) {  
+                    synchronized (frame) {  
+                        frame.setVisible(false);  
+                        frame.dispose();  
+                        frame.notify();  
+                    }  
+                }  
+                @Override 
+                public void keyReleased(KeyEvent e) {  
+                }  
+                @Override 
+                public void keyTyped(KeyEvent e) {  
+                }  
+            });  
+            frame.setVisible(true);  
+            try {  
+                frame.wait();  
+            } catch (InterruptedException e1) {  
+            }  
+        }  
+    }
 }
 
 /*
